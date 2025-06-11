@@ -1,4 +1,4 @@
-# 🏆 Samadhan AI - Hackathon Winning Backend (Comprehensive Dataset)
+# 🏆 Samadhan AI - Backend (Comprehensive Dataset)
 
 **AI-powered citizen grievance automation for UP CM Helpline 1076**
 
