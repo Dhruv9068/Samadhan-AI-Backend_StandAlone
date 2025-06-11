@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""
+Deployment Check Script for Samadhan AI Backend
+Run this script to verify your deployment is ready
+"""
+
+import os
+import sys
+import requests
+import json
+from datetime import datetime
+
+def check_environment_variables():
+    """Check if all required environment variables are set"""
+    print("🔍 Checking Environment Variables...")
+    
+    required_vars = [
+        'WATSONX_API_KEY',
+        'WATSONX_DEPLOYMENT_ID',
+        'WATSONX_URL',
+        'OPENROUTER_API_KEY',
+        'PORT',
+        'FRONTEND_URL'
+    ]
+    
+    missing_vars = []
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+    
+    if missing_vars:
+        print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
+        return False
+    else:
+        print("✅ All required environment variables are set")
+        return True
+
+def check_dependencies():
+    """Check if all required dependencies are available"""
+    print("\n🔍 Checking Dependencies...")
+    
+    required_packages = [
+        'flask',
+        'flask_cors',
+        'requests',
+        'python-dotenv',
+        'langchain',
+        'sentence-transformers',
+        'numpy',
+        'openai'
+    ]
+    
+    missing_packages = []
+    for package in required_packages:
+        try:
+            __import__(package.replace('-', '_'))
+        except ImportError:
+            missing_packages.append(package)
+    
+    if missing_packages:
+        print(f"❌ Missing packages: {', '.join(missing_packages)}")
+        print("Run: pip install -r requirements.txt")
+        return False
+    else:
+        print("✅ All required packages are installed")
+        return True
+
+def check_watsonx_connection():
+    """Check WatsonX API connection"""
+    print("\n🔍 Checking WatsonX Connection...")
+    
+    api_key = os.getenv('WATSONX_API_KEY')
+    if not api_key:
+        print("❌ WatsonX API key not found")
+        return False
+    
+    try:
+        # Test IBM Cloud IAM token
+        response = requests.post(
+            'https://iam.cloud.ibm.com/identity/token',
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+            },
+            data=f'grant_type=urn:ibm:params:oauth:grant-type:apikey&apikey={api_key}',
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            print("✅ WatsonX API connection successful")
+            return True
+        else:
+            print(f"❌ WatsonX API connection failed: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ WatsonX connection error: {e}")
+        return False
+
+def check_openrouter_connection():
+    """Check OpenRouter API connection"""
+    print("\n🔍 Checking OpenRouter Connection...")
+    
+    api_key = os.getenv('OPENROUTER_API_KEY')
+    if not api_key:
+        print("❌ OpenRouter API key not found")
+        return False
+    
+    try:
+        from openai import OpenAI
+        
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+        
+        # Test with a simple request
+        completion = client.chat.completions.create(
+            model="deepseek/deepseek-r1-0528-qwen3-8b:free",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=10
+        )
+        
+        if completion.choices[0].message.content:
+            print("✅ OpenRouter API connection successful")
+            return True
+        else:
+            print("❌ OpenRouter API returned empty response")
+            return False
+            
+    except Exception as e:
+        print(f"❌ OpenRouter connection error: {e}")
+        return False
+
+def check_file_structure():
+    """Check if all required files are present"""
+    print("\n🔍 Checking File Structure...")
+    
+    required_files = [
+        'app.py',
+        'requirements.txt',
+        'samadhan_dataset/__init__.py',
+        'samadhan_dataset/load_dataset.py'
+    ]
+    
+    missing_files = []
+    for file in required_files:
+        if not os.path.exists(file):
+            missing_files.append(file)
+    
+    if missing_files:
+        print(f"❌ Missing files: {', '.join(missing_files)}")
+        return False
+    else:
+        print("✅ All required files are present")
+        return True
+
+def test_local_server():
+    """Test if the local server can start"""
+    print("\n🔍 Testing Local Server...")
+    
+    try:
+        # Import the app to check for import errors
+        from app import app
+        print("✅ App imports successfully")
+        
+        # Test if app can be created
+        with app.test_client() as client:
+            response = client.get('/health')
+            if response.status_code == 200:
+                print("✅ Health endpoint responds correctly")
+                return True
+            else:
+                print(f"❌ Health endpoint failed: {response.status_code}")
+                return False
+                
+    except Exception as e:
+        print(f"❌ Local server test failed: {e}")
+        return False
+
+def generate_deployment_summary():
+    """Generate deployment summary"""
+    print("\n📊 Deployment Summary:")
+    print("=" * 50)
+    
+    # Environment info
+    print(f"Python Version: {sys.version}")
+    print(f"Current Directory: {os.getcwd()}")
+    print(f"PORT: {os.getenv('PORT', 'Not set')}")
+    print(f"FRONTEND_URL: {os.getenv('FRONTEND_URL', 'Not set')}")
+    
+    # WatsonX accounts
+    watsonx_accounts = 0
+    for i in range(1, 4):
+        suffix = '' if i == 1 else f'_{i}'
+        if os.getenv(f'WATSONX_API_KEY{suffix}'):
+            watsonx_accounts += 1
+    
+    print(f"WatsonX Accounts Configured: {watsonx_accounts}")
+    print(f"OpenRouter Configured: {'✅' if os.getenv('OPENROUTER_API_KEY') else '❌'}")
+    
+    print("=" * 50)
+
+def main():
+    """Main deployment check function"""
+    print("🚀 Samadhan AI Backend Deployment Check")
+    print("=" * 50)
+    
+    checks = [
+        check_file_structure,
+        check_environment_variables,
+        check_dependencies,
+        check_watsonx_connection,
+        check_openrouter_connection,
+        test_local_server
+    ]
+    
+    passed_checks = 0
+    total_checks = len(checks)
+    
+    for check in checks:
+        if check():
+            passed_checks += 1
+    
+    print(f"\n📊 Results: {passed_checks}/{total_checks} checks passed")
+    
+    if passed_checks == total_checks:
+        print("🎉 All checks passed! Your backend is ready for deployment.")
+        generate_deployment_summary()
+        return True
+    else:
+        print("❌ Some checks failed. Please fix the issues before deploying.")
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

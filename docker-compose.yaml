@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  samadhan-ai-backend:
+    build: .
+    container_name: samadhan-ai-backend
+    ports:
+      - "5000:5000"
+    environment:
+      # WatsonX Primary Account
+      - WATSONX_API_KEY=${WATSONX_API_KEY}
+      - WATSONX_DEPLOYMENT_ID=${WATSONX_DEPLOYMENT_ID}
+      - WATSONX_URL=${WATSONX_URL}
+      - WATSONX_VERSION=${WATSONX_VERSION:-2023-05-09}
+      
+      # WatsonX Secondary Account (Optional)
+      - WATSONX_API_KEY_2=${WATSONX_API_KEY_2}
+      - WATSONX_DEPLOYMENT_ID_2=${WATSONX_DEPLOYMENT_ID_2}
+      - WATSONX_URL_2=${WATSONX_URL_2}
+      - WATSONX_VERSION_2=${WATSONX_VERSION_2:-2023-05-09}
+      
+      # WatsonX Tertiary Account (Optional)
+      - WATSONX_API_KEY_3=${WATSONX_API_KEY_3}
+      - WATSONX_DEPLOYMENT_ID_3=${WATSONX_DEPLOYMENT_ID_3}
+      - WATSONX_URL_3=${WATSONX_URL_3}
+      - WATSONX_VERSION_3=${WATSONX_VERSION_3:-2023-05-09}
+      
+      # OpenRouter Configuration
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-deepseek/deepseek-r1-0528-qwen3-8b:free}
+      
+      # Server Configuration
+      - PORT=5000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      
+      # Production Settings
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - samadhan-network
+
+networks:
+  samadhan-network:
+    driver: bridge
+
+volumes:
+  logs:
